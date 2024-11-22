@@ -28,24 +28,14 @@ Ensure you have the following installed:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/vite-react-chrome-extension.git
-cd vite-react-chrome-extension
+git clone https://github.com/manideep1428/Astron.ai.git
+cd Astron.ai
 
 2. Install Dependencies
 
 npm install
 # or
 yarn install
-
-3. Development Mode
-
-Start the development server:
-
-npm run dev
-# or
-yarn dev
-
-The development server runs with HMR and serves the extension's assets.
 
 4. Build for Production
 
@@ -78,49 +68,6 @@ Load Extension in Chrome
 
 ---
 
-Project Structure
-
-vite-react-chrome-extension/
-├── public/              # Static assets
-├── src/
-│   ├── background/      # Background scripts
-│   ├── content/         # Content scripts
-│   ├── popup/           # Popup React app
-│   ├── manifest.json    # Extension manifest
-│   └── main.jsx         # Main entry point for Vite
-├── vite.config.js       # Vite configuration
-└── package.json         # Project metadata
-
-
----
-
-Customize Manifest
-
-Edit the manifest.json file in the src directory to suit your extension's needs.
-
-Example Manifest Snippet:
-
-{
-  "manifest_version": 3,
-  "name": "Vite React Chrome Extension",
-  "version": "1.0.0",
-  "permissions": ["storage"],
-  "action": {
-    "default_popup": "index.html"
-  },
-  "background": {
-    "service_worker": "background.js"
-  },
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"]
-    }
-  ]
-}
-
-
----
 
 Development Notes
 
@@ -130,16 +77,6 @@ Manifest Updates: Make sure to rebuild after updating manifest.json or backgroun
 
 Testing: Use the Chrome DevTools extension environment to debug.
 
-
-
----
-
-License
-
-This project is licensed under the MIT License.
-
-
----
 
 Contributions
 
