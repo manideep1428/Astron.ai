@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Astron AI",
+  "version": "1.0.0",
+  "description": "Tools for selected text translation and summarization",
+  "permissions": ["activeTab", "storage"],
+  "action": {
+    "default_popup": "index.html"
+  },
+  "background": {
+    "service_worker": "assets/background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["assets/main.js"],
+      "css": ["assets/main.css"]
+    }
+  ]
+}
