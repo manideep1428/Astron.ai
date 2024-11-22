@@ -30,44 +30,40 @@ Ensure you have the following installed:
 ```bash
 git clone https://github.com/manideep1428/Astron.ai.git
 cd Astron.ai
+```
 
 2. Install Dependencies
-
+```bash
 npm install
 # or
 yarn install
+```
 
 4. Build for Production
 
 Generate production-ready files:
-
+```bash
 npm run build
 # or
 yarn build
+```
 
 The output will be in the dist folder.
 
 
----
-
 Load Extension in Chrome
 
-1. Open Chrome and navigate to chrome://extensions/.
+1. Open Chrome and navigate to
 
+2.  ```bash  chrome://extensions/  ```
 
-2. Enable Developer Mode.
+3. Enable Developer Mode.
 
+4. Click Load unpacked.
 
-3. Click Load unpacked.
-
-
-4. Select the dist folder.
-
-
-
+5. Select the dist folder that in Astron.ai folder
 
 ---
-
 
 Development Notes
 
