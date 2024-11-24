@@ -96,7 +96,7 @@ const SelectionPopup: React.FC<SelectionPopupProps> = ({
           <>
             <button
               onClick={handleCloseClick}
-              className="absolute top-1 right-1 w-4 h-4 flex items-center justify-center rounded-full bg-black text-white hover:bg-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600"
+              className="absolute top-0 right-0 w-4 h-4 flex items-center justify-center rounded-full text-black hover:bg-gray-600 dark:bg-gray-700 bg-white dark:hover:bg-gray-600"
               aria-label="Close"
             >
               <X className="w-2 h-2" />
