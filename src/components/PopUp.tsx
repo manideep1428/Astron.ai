@@ -1,5 +1,8 @@
-import { useState, } from 'react';
-import { MessageSquare, RefreshCcw, FileText, Send, } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { MessageSquare, RefreshCcw, FileText, Send, X, ChevronDown } from 'lucide-react';
+import { chatWithAI } from '../api/services';
+import { summarizeText } from '../api/summarize';
+import { supportedLanguages, translateText } from '../api/translate';
 
 interface Message {
   text: string;
@@ -10,98 +13,147 @@ export default function Popup() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showLanguageSelect, setShowLanguageSelect] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState('');
+  const [pageContent, setPageContent] = useState('');
 
-  const handleSend = () => {
+  useEffect(() => {
+    // Simulating getting current tab's content
+    // In a real extension, you'd use chrome.tabs.query to get the active tab and its content
+    setPageContent("This is the content of the current tab. It would be much longer in a real scenario.");
+  }, []);
+
+  const handleSend = async () => {
     if (inputText.trim()) {
       setMessages([...messages, { text: inputText, isUser: true }]);
       setInputText('');
-      handleUserInput(inputText);
+      await handleUserInput(inputText);
     }
   };
 
   const handleUserInput = async (input: string) => {
     setIsLoading(true);
-    // Simulating API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    if (input.toLowerCase().includes('rewrite')) {
-      setMessages(prev => [...prev, { text: "What would you like me to rewrite? I can use the current page or your bookmarks.", isUser: false }]);
-    } else {
-      setMessages(prev => [...prev, { text: "I've processed your request. Here's a simulated response.", isUser: false }]);
+    try {
+      const response = await chatWithAI(input);
+      setMessages(prev => [...prev, { text: response, isUser: false }]);
+    } catch (error: any) {
+      setMessages(prev => [...prev, { text: `Error: ${error.message}`, isUser: false }]);
     }
     setIsLoading(false);
   };
 
-  const handleAction = async (action: 'summarize' | 'rewrite' | 'translate') => {
+  const handleAction = async (action: 'summarize' | 'translate' | 'rewrite') => {
     setIsLoading(true);
-    // Simulating getting current tab's content
-    const tabContent = "This is the content of the current tab.";
-    
-    // Simulating API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    let response = '';
-    switch (action) {
-      case 'summarize':
-        response = `Here's a summary of the current page: ${tabContent.substring(0, 50)}...`;
-        break;
-      case 'rewrite':
-        setMessages(prev => [...prev, { text: "What would you like me to rewrite? I can use the current page or your bookmarks.", isUser: false }]);
-        setIsLoading(false);
-        return;
-      case 'translate':
-        response = `Here's the translated content: ${tabContent.substring(0, 50)}...`;
-        break;
+    try {
+      switch (action) {
+        case 'summarize':
+          const summary = await summarizeText(pageContent);
+          setMessages(prev => [...prev, { text: `Summary: ${summary}`, isUser: false }]);
+          break;
+        case 'translate':
+          setShowLanguageSelect(true);
+          break;
+        case 'rewrite':
+          setMessages(prev => [...prev, { text: "What would you like me to rewrite? I can use the current page or your bookmarks.", isUser: false }]);
+          break;
+      }
+    } catch (error: any) {
+      setMessages(prev => [...prev, { text: `Error: ${error.message}`, isUser: false }]);
     }
-    
-    setMessages(prev => [...prev, { text: response, isUser: false }]);
     setIsLoading(false);
+  };
+
+  const handleTranslate = async () => {
+    if (selectedLanguage) {
+      setIsLoading(true);
+      try {
+        const translatedContent = await translateText(pageContent, selectedLanguage);
+        setMessages(prev => [...prev, { text: `Translated content: ${translatedContent.substring(0, 100)}...`, isUser: false }]);
+      } catch (error: any) {
+        setMessages(prev => [...prev, { text: `Translation error: ${error.message}`, isUser: false }]);
+      }
+      setIsLoading(false);
+      setShowLanguageSelect(false);
+      setSelectedLanguage('');
+    }
   };
 
   return (
-    <div className="flex flex-col h-[600px] w-[400px] bg-gray-900">
+    <div className="flex flex-col h-[600px] w-[400px] bg-gradient-to-br from-gray-900 to-gray-800 text-white font-sans">
       {/* Header */}
-      <div className="p-3 border-b border-gray-700">
-        <h1 className="text-lg font-semibold text-white">Astron</h1>
+      <div className="p-4 border-b border-gray-700 bg-gray-800 rounded-t-lg">
+        <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
+          Astron
+        </h1>
       </div>
 
       {/* Quick Action Buttons */}
-      <div className="grid grid-cols-3 gap-2 p-2 border-b border-gray-700">
-        <div
-          onClick={() => handleAction('summarize')}
-          className="flex items-center justify-center gap-1.5 p-2 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors text-white cursor-pointer"
-        >
-          <FileText size={16} />
-          <span className="text-xs">Summarize the Page</span>
-        </div>
-        <div
-          onClick={() => handleAction('translate')}
-          className="flex items-center justify-center gap-1.5 p-2 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors text-white cursor-pointer"
-        >
-          <MessageSquare size={16} />
-          <span className="text-xs">Translate the Page</span>
-        </div>
-        <div
-          onClick={() => handleAction('rewrite')}
-          className="flex items-center justify-center gap-1.5 p-2 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors text-white cursor-pointer"
-        >
-          <RefreshCcw size={16} />
-          <span className="text-xs">Rewriter</span>
-        </div>
+      <div className="grid grid-cols-3 gap-3 p-3 border-b border-gray-700 bg-gray-800/50">
+        {['summarize', 'translate', 'rewrite'].map((action) => (
+          <button
+            key={action}
+            onClick={() => handleAction(action as 'summarize' | 'translate' | 'rewrite')}
+            className="flex flex-col items-center justify-center p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {action === 'summarize' && <FileText size={20} className="mb-1 text-blue-400" />}
+            {action === 'translate' && <MessageSquare size={20} className="mb-1 text-green-400" />}
+            {action === 'rewrite' && <RefreshCcw size={20} className="mb-1 text-purple-400" />}
+            <span className="text-xs font-medium capitalize">{action} Page</span>
+          </button>
+        ))}
       </div>
 
+      {/* Language Select Modal */}
+      {showLanguageSelect && (
+        <div className="absolute inset-0 bg-gray-900/80 flex items-center justify-center backdrop-blur-sm transition-all duration-300">
+          <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-80 transform transition-all duration-300 scale-100 opacity-100">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-blue-400">Select Target Language</h2>
+              <button 
+                onClick={() => setShowLanguageSelect(false)}
+                className="text-gray-400 hover:text-white transition-colors duration-200"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="relative">
+              <select
+                value={selectedLanguage}
+                onChange={(e) => setSelectedLanguage(e.target.value)}
+                className="w-full p-3 mb-4 bg-gray-700 text-white rounded-lg appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+              >
+                <option value="">Select a language</option>
+                {supportedLanguages.map((lang) => (
+                  <option key={lang.code} value={lang.code}>
+                    {lang.name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={20} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
+            </div>
+            <button
+              onClick={handleTranslate}
+              className="w-full p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              Translate
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-3">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((message, index) => (
           <div
             key={index}
             className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
           >
             <div
-              className={`max-w-[80%] p-2 rounded-lg ${
+              className={`max-w-[80%] p-3 rounded-lg ${
                 message.isUser
                   ? 'bg-blue-600 text-white'
-                  : 'bg-gray-800 text-white'
-              }`}
+                  : 'bg-gray-700 text-white'
+              } shadow-md transition-all duration-300 hover:shadow-lg`}
             >
               {message.text}
             </div>
@@ -109,7 +161,7 @@ export default function Popup() {
         ))}
         {isLoading && (
           <div className="flex justify-start">
-            <div className="max-w-[80%] p-2 rounded-lg bg-gray-800 text-white">
+            <div className="max-w-[80%] p-3 rounded-lg bg-gray-700 text-white shadow-md">
               <Skeleton />
             </div>
           </div>
@@ -117,21 +169,21 @@ export default function Popup() {
       </div>
 
       {/* Input Area */}
-      <div className="p-3 border-t border-gray-700">
+      <div className="p-4 border-t border-gray-700 bg-gray-800 rounded-b-lg">
         <div className="flex gap-2">
           <input
             type="text"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             placeholder="Type your message..."
-            className="flex-1 p-2 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-blue-500 text-sm"
+            className="flex-1 p-3 rounded-lg bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 transition-all duration-200"
             onKeyPress={(e) => e.key === 'Enter' && handleSend()}
           />
           <button
             onClick={handleSend}
-            className="p-2 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors text-white"
+            className="p-3 bg-blue-600 rounded-lg hover:bg-blue-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transform hover:scale-105"
           >
-            <Send size={16} />
+            <Send size={20} />
           </button>
         </div>
       </div>
@@ -141,10 +193,10 @@ export default function Popup() {
 
 function Skeleton() {
   return (
-    <div className="flex items-center space-x-2 animate-pulse">
-      <div className="w-4 h-4 bg-gray-700 rounded-full"></div>
-      <div className="w-4 h-4 bg-gray-700 rounded-full"></div>
-      <div className="w-4 h-4 bg-gray-700 rounded-full"></div>
+    <div className="flex items-center space-x-2">
+      <div className="w-3 h-3 bg-blue-400 rounded-full animate-bounce"></div>
+      <div className="w-3 h-3 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+      <div className="w-3 h-3 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
     </div>
   );
 }

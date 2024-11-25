@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { X, GripHorizontal } from 'lucide-react';
 import { motion, useDragControls } from "framer-motion";
-import {  summarizeText } from "../api/summarize"
+import { summarizeText } from "../api/summarize";
 import { defineText } from "../api/prompt";
-import { translateText } from "../api/translate";
+import { supportedLanguages, translateText } from "../api/translate";
 
 interface ActionPopupProps {
   action: "summarize" | "define" | "translate";
@@ -13,7 +13,7 @@ interface ActionPopupProps {
 
 const ActionPopup: React.FC<ActionPopupProps> = ({ action, selectedText, onClose }) => {
   const [result, setResult] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [targetLanguage, setTargetLanguage] = useState<string>("");
   const dragControls = useDragControls();
@@ -55,11 +55,8 @@ const ActionPopup: React.FC<ActionPopupProps> = ({ action, selectedText, onClose
     }
   }, [action, selectedText, targetLanguage]);
 
-  const handleTargetLanguageSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const lang = formData.get("targetLang") as string;
-    setTargetLanguage(lang);
+  const handleTargetLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setTargetLanguage(e.target.value);
   };
 
   return (
@@ -96,25 +93,30 @@ const ActionPopup: React.FC<ActionPopupProps> = ({ action, selectedText, onClose
 
       <div className="p-4 bg-white dark:bg-gray-900">
         {action === "translate" && !targetLanguage ? (
-          <form onSubmit={handleTargetLanguageSubmit} className="space-y-3">
+          <div className="space-y-3">
             <label htmlFor="targetLang" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Enter target language:
+              Select target language:
             </label>
-            <input
-              type="text"
-              id="targetLang"
-              name="targetLang"
-              required
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              placeholder="e.g., Spanish, French, German"
-            />
-            <button
-              type="submit"
-              className="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-600"
-            >
-              Translate
-            </button>
-          </form>
+            <div className="relative">
+              <select
+                id="targetLang"
+                onChange={handleTargetLanguageChange}
+                className="block appearance-none w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 py-2 px-4 pr-8 rounded leading-tight focus:outline-none focus:bg-white focus:border-gray-500"
+              >
+                <option value="">Select a language</option>
+                {supportedLanguages.map((lang) => (
+                  <option key={lang.code} value={lang.code}>
+                    {lang.name}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700 dark:text-gray-200">
+                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                  <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                </svg>
+              </div>
+            </div>
+          </div>
         ) : loading ? (
           <div className="space-y-3 animate-pulse">
             <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-md"></div>
@@ -123,7 +125,7 @@ const ActionPopup: React.FC<ActionPopupProps> = ({ action, selectedText, onClose
           </div>
         ) : error ? (
           <div className="text-sm text-red-500">{error}</div>
-        ) : (
+        ) : result ? (
           <div className="space-y-3">
             <div className="text-xs font-medium text-gray-500 dark:text-gray-400 pt-2">
               Result:
@@ -132,10 +134,11 @@ const ActionPopup: React.FC<ActionPopupProps> = ({ action, selectedText, onClose
               {result}
             </div>
           </div>
-        )}
+        ) : null}
       </div>
     </motion.div>
   );
 };
 
 export default ActionPopup;
+
