@@ -4,9 +4,11 @@ import { motion, useDragControls } from "framer-motion";
 import { summarizeText } from "../api/summarize";
 import { defineText } from "../api/prompt";
 import { supportedLanguages, translateText } from "../api/translate";
+import { rewriteText } from "../api/rewrite";
+import { SelectSVG } from "./svgs";
 
 interface ActionPopupProps {
-  action: "summarize" | "define" | "translate";
+  action: "summarize" | "define" | "translate" | "rewrite";
   selectedText: string;
   onClose: () => void;
 }
@@ -16,7 +18,24 @@ const ActionPopup: React.FC<ActionPopupProps> = ({ action, selectedText, onClose
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [targetLanguage, setTargetLanguage] = useState<string>("");
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const dragControls = useDragControls();
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    const isDark = document.documentElement.classList.contains('dark') || 
+                  document.body.classList.contains('dark') ||
+                  mediaQuery.matches
+
+    setIsDarkMode(isDark)
+
+    const handleChange = (e: MediaQueryListEvent) => {
+      setIsDarkMode(e.matches)
+    }
+
+    mediaQuery.addListener(handleChange)
+    return () => mediaQuery.removeListener(handleChange)
+  }, [])
 
   useEffect(() => {
     const fetchResult = async () => {
@@ -39,6 +58,9 @@ const ActionPopup: React.FC<ActionPopupProps> = ({ action, selectedText, onClose
             }
             res = await translateText(selectedText, targetLanguage);
             break;
+          case "rewrite":
+            res = await rewriteText(selectedText);
+            break;
           default:
             throw new Error("Invalid action");
         }
@@ -59,6 +81,27 @@ const ActionPopup: React.FC<ActionPopupProps> = ({ action, selectedText, onClose
     setTargetLanguage(e.target.value);
   };
 
+  // Invert colors based on page theme
+  const baseTheme = isDarkMode ? {
+    bg: 'bg-white',
+    secondaryBg: 'bg-gray-50',
+    hoverBg: 'hover:bg-gray-100',
+    text: 'text-gray-900',
+    secondaryText: 'text-gray-600',
+    tertiaryText: 'text-gray-500',
+    border: 'border-gray-200',
+    input: 'bg-white border-gray-300 focus:border-gray-400',
+  } : {
+    bg: 'bg-gray-900',
+    secondaryBg: 'bg-gray-800',
+    hoverBg: 'hover:bg-gray-700',
+    text: 'text-white',
+    secondaryText: 'text-gray-300',
+    tertiaryText: 'text-gray-400',
+    border: 'border-gray-700',
+    input: 'bg-gray-800 border-gray-600 focus:border-gray-500',
+  }
+
   return (
     <motion.div
       drag
@@ -68,40 +111,40 @@ const ActionPopup: React.FC<ActionPopupProps> = ({ action, selectedText, onClose
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
-      className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[2147483648] w-96 bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-300 dark:border-gray-700 transition-colors duration-300 overflow-hidden"
+      className={`fixed top-4 left-1/2 transform -translate-x-1/2 z-[2147483648] w-96 ${baseTheme.bg} rounded-xl shadow-xl border ${baseTheme.border} backdrop-blur-sm transition-colors duration-300`}
     >
-      <div className="flex justify-between items-center p-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+      <div className={`flex justify-between items-center p-3 border-b ${baseTheme.border} ${baseTheme.secondaryBg}`}>
         <div className="flex items-center gap-2">
           <motion.div
-            className="cursor-grab active:cursor-grabbing hover:bg-gray-200 dark:hover:bg-gray-700 p-1 rounded-lg transition-colors duration-200"
+            className={`cursor-grab active:cursor-grabbing ${baseTheme.hoverBg} p-1 rounded-lg transition-colors duration-200`}
             onPointerDown={(e) => dragControls.start(e)}
           >
-            <GripHorizontal className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+            <GripHorizontal className={`w-5 h-5 ${baseTheme.tertiaryText}`} />
           </motion.div>
-          <h2 className="text-lg font-semibold capitalize text-gray-800 dark:text-gray-100">
+          <h2 className={`text-lg font-semibold capitalize ${baseTheme.text}`}>
             {action}
           </h2>
         </div>
         <button
           onClick={onClose}
-          className="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200"
+          className={`p-1.5 rounded-lg ${baseTheme.hoverBg} transition-colors duration-200`}
           aria-label="Close"
         >
-          <X className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+          <X className={`w-5 h-5 ${baseTheme.secondaryText}`} />
         </button>
       </div>
 
-      <div className="p-4 bg-white dark:bg-gray-900">
+      <div className={`p-4 ${baseTheme.bg}`}>
         {action === "translate" && !targetLanguage ? (
           <div className="space-y-3">
-            <label htmlFor="targetLang" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label htmlFor="targetLang" className={`block text-sm font-medium ${baseTheme.secondaryText}`}>
               Select target language:
             </label>
             <div className="relative">
               <select
                 id="targetLang"
                 onChange={handleTargetLanguageChange}
-                className="block appearance-none w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 py-2 px-4 pr-8 rounded leading-tight focus:outline-none focus:bg-white focus:border-gray-500"
+                className={`block appearance-none w-full ${baseTheme.input} ${baseTheme.text} py-2 px-4 pr-8 rounded-lg transition-colors duration-200 focus:outline-none`}
               >
                 <option value="">Select a language</option>
                 {supportedLanguages.map((lang) => (
@@ -110,27 +153,25 @@ const ActionPopup: React.FC<ActionPopupProps> = ({ action, selectedText, onClose
                   </option>
                 ))}
               </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700 dark:text-gray-200">
-                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                  <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                </svg>
+              <div className={`pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 ${baseTheme.secondaryText}`}>
+                <SelectSVG />
               </div>
             </div>
           </div>
         ) : loading ? (
           <div className="space-y-3 animate-pulse">
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-md"></div>
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-md w-5/6"></div>
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-md w-4/6"></div>
+            <div className={`h-4 ${baseTheme.secondaryBg} rounded-md`}></div>
+            <div className={`h-4 ${baseTheme.secondaryBg} rounded-md w-5/6`}></div>
+            <div className={`h-4 ${baseTheme.secondaryBg} rounded-md w-4/6`}></div>
           </div>
         ) : error ? (
-          <div className="text-sm text-red-500">{error}</div>
+          <div className="text-sm text-red-500 dark:text-red-400">{error}</div>
         ) : result ? (
           <div className="space-y-3">
-            <div className="text-xs font-medium text-gray-500 dark:text-gray-400 pt-2">
+            <div className={`text-xs font-medium ${baseTheme.tertiaryText} pt-2`}>
               Result:
             </div>
-            <div className="text-sm text-gray-700 dark:text-gray-200">
+            <div className={`text-sm ${baseTheme.text} leading-relaxed`}>
               {result}
             </div>
           </div>
@@ -141,4 +182,3 @@ const ActionPopup: React.FC<ActionPopupProps> = ({ action, selectedText, onClose
 };
 
 export default ActionPopup;
-

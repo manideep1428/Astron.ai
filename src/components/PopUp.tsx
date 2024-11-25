@@ -18,8 +18,6 @@ export default function Popup() {
   const [pageContent, setPageContent] = useState('');
 
   useEffect(() => {
-    // Simulating getting current tab's content
-    // In a real extension, you'd use chrome.tabs.query to get the active tab and its content
     setPageContent("This is the content of the current tab. It would be much longer in a real scenario.");
   }, []);
 

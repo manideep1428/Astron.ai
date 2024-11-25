@@ -1,7 +1,7 @@
-import { BookA, X } from 'lucide-react'
-import React, { useState, useEffect } from "react"
-import { SummarizesSVG, TranslateSVG } from "./svgs"
+import React, { useState, useEffect, useRef } from "react"
+import { RewriteSVG, SummarizesSVG, TranslateSVG } from "./svgs"
 import ActionPopup from "./ActionPopup"
+import { BookA, X } from "lucide-react"
 
 interface SelectionPopupProps {
   selectedText: string
@@ -16,7 +16,25 @@ const SelectionPopup: React.FC<SelectionPopupProps> = ({
 }) => {
   const [isVisible, setIsVisible] = useState(false)
   const [showCloseOptions, setShowCloseOptions] = useState(false)
-  const [activeAction, setActiveAction] = useState<'summarize' | 'define' | 'translate' | null>(null)
+  const [activeAction, setActiveAction] = useState<'summarize' | 'define' | 'translate' | 'rewrite' | null>(null)
+  const [isDarkMode, setIsDarkMode] = useState(false)
+  const popupRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    const isDark = document.documentElement.classList.contains('dark') || 
+                  document.body.classList.contains('dark') ||
+                  mediaQuery.matches
+
+    setIsDarkMode(isDark)
+
+    const handleChange = (e: MediaQueryListEvent) => {
+      setIsDarkMode(e.matches)
+    }
+
+    mediaQuery.addListener(handleChange)
+    return () => mediaQuery.removeListener(handleChange)
+  }, [])
 
   useEffect(() => {
     const isClosedUntilRefresh = localStorage.getItem("popupClosedUntilRefresh") === "true"
@@ -24,11 +42,30 @@ const SelectionPopup: React.FC<SelectionPopupProps> = ({
     if (!isClosedUntilRefresh) {
       const timer = setTimeout(() => {
         setIsVisible(true)
-      }, 500)
+      }, 300) // Reduced delay
       
       return () => clearTimeout(timer)
     }
   }, [])
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (popupRef.current && !popupRef.current.contains(event.target as Node)) {
+        handleClose()
+      }
+    }
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        handleClose()
+      }
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [isVisible])
 
   const handleCloseClick = () => {
     setShowCloseOptions(true)
@@ -42,12 +79,10 @@ const SelectionPopup: React.FC<SelectionPopupProps> = ({
 
   const handleCloseUntilRefresh = () => {
     localStorage.setItem("popupClosedUntilRefresh", "true")
-    setIsVisible(false)
-    setShowCloseOptions(false)
-    onClose()
+    handleClose()
   }
 
-  const handleActionClick = (action: 'summarize' | 'define' | 'translate') => {
+  const handleActionClick = (action: 'summarize' | 'define' | 'translate' | 'rewrite') => {
     setActiveAction(action)
   }
 
@@ -62,32 +97,46 @@ const SelectionPopup: React.FC<SelectionPopupProps> = ({
 
   if (!isVisible) return null
 
+  const baseTheme = isDarkMode ? {
+    bg: 'bg-white',
+    text: 'text-gray-900',
+    border: 'border-gray-200',
+    buttonBg: 'bg-gray-100',
+    buttonHover: 'hover:bg-gray-200',
+    buttonText: 'text-gray-900'
+  } : {
+    bg: 'bg-gray-900',
+    text: 'text-white',
+    border: 'border-gray-700',
+    buttonBg: 'bg-gray-800',
+    buttonHover: 'hover:bg-gray-700',
+    buttonText: 'text-white'
+  }
+
   return (
     <>
       <div
-        className={`fixed rounded-lg shadow-lg border p-2 z-[2147483647] transition-opacity duration-300 ${
-          document.documentElement.classList.contains("dark")
-            ? "bg-gray-800 border-gray-700 text-white"
-            : "bg-white border-gray-200 text-gray-900"
-        }`}
+        ref={popupRef}
+        className={`fixed rounded-lg shadow-lg border backdrop-blur-sm p-2 z-[2147483647] transition-all duration-200 ${baseTheme.bg} ${baseTheme.text} ${baseTheme.border}`}
         style={{
           top: `${position.y}px`,
           left: `${position.x}px`,
-          minWidth: "140px",
+          minWidth: "160px",
           opacity: isVisible ? 1 : 0,
+          transform: isVisible ? 'scale(1)' : 'scale(0.95)',
         }}
       >
         {showCloseOptions ? (
-          <div className="flex flex-row items-center gap-2 text-xs">
+          <div className="flex flex-row items-center gap-1.5 text-xs">
             <button
               onClick={handleClose}
-              className="px-2 py-1 rounded bg-black text-white dark:bg-gray-600 dark:hover:bg-gray-500 hover:bg-gray-700"
+              className={`px-2 py-1 rounded-md ${baseTheme.buttonBg} ${baseTheme.buttonText} ${baseTheme.buttonHover} transition-colors duration-150`}
             >
               Close
             </button>
             <button
               onClick={handleCloseUntilRefresh}
-              className="px-2 py-1 rounded bg-red-600 text-white dark:bg-red-500 dark:hover:bg-red-400 hover:bg-red-700"
+              className="px-2 py-1 rounded-md bg-red-500/90 text-white hover:bg-red-600/90 transition-colors duration-150"
             >
               Until Refresh
             </button>
@@ -96,34 +145,28 @@ const SelectionPopup: React.FC<SelectionPopupProps> = ({
           <>
             <button
               onClick={handleCloseClick}
-              className="absolute top-0 right-0 w-4 h-4 flex items-center justify-center rounded-full text-black hover:bg-gray-600 dark:bg-gray-700 bg-white dark:hover:bg-gray-600"
+              className={`absolute top-1 right-1 w-4 h-4 flex items-center justify-center rounded-full ${baseTheme.buttonBg} ${baseTheme.buttonText} ${baseTheme.buttonHover} transition-colors duration-150`}
               aria-label="Close"
             >
               <X className="w-2 h-2" />
             </button>
 
-            <div className="flex flex-row gap-1 mt-1">
-              <button
-                onClick={() => handleActionClick('summarize')}
-                className="flex items-center gap-1 px-2 py-1 text-xs bg-black text-white rounded hover:bg-gray-700 dark:bg-gray-600 dark:hover:bg-gray-500"
-              >
-                <SummarizesSVG className="w-3 h-3" />
-                Summarize
-              </button>
-              <button
-                onClick={() => handleActionClick('define')}
-                className="flex items-center gap-1 px-2 py-1 text-xs bg-black text-white rounded hover:bg-gray-700 dark:bg-gray-600 dark:hover:bg-gray-500"
-              >
-                <BookA className="w-3 h-3" />
-                Define
-              </button>
-              <button
-                onClick={() => handleActionClick('translate')}
-                className="flex items-center gap-1 px-2 py-1 text-xs bg-black text-white rounded hover:bg-gray-700 dark:bg-gray-600 dark:hover:bg-gray-500"
-              >
-                <TranslateSVG className="w-3 h-3" />
-                Translate
-              </button>
+            <div className="flex flex-wrap gap-1.5 mt-0.5">
+              {[
+                { action: 'summarize', icon: <SummarizesSVG className="w-3 h-3" />, label: 'Summarize' },
+                { action: 'define', icon: <BookA className="w-3 h-3" />, label: 'Define' },
+                { action: 'translate', icon: <TranslateSVG className="w-3 h-3" />, label: 'Translate' },
+                { action: 'rewrite', icon: <RewriteSVG className="w-3 h-3" />, label: 'Rewrite' },
+              ].map(({ action, icon, label }) => (
+                <button
+                  key={action}
+                  onClick={() => handleActionClick(action as any)}
+                  className={`flex items-center gap-1.5 px-2 py-1 text-xs rounded-md ${baseTheme.buttonBg} ${baseTheme.buttonText} ${baseTheme.buttonHover} transition-all duration-150 hover:scale-105`}
+                >
+                  {icon}
+                  {label}
+                </button>
+              ))}
             </div>
           </>
         )}
@@ -139,5 +182,4 @@ const SelectionPopup: React.FC<SelectionPopupProps> = ({
   )
 }
 
-export default SelectionPopup
-
+export default SelectionPopup  
