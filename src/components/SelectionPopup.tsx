@@ -42,7 +42,7 @@ const SelectionPopup: React.FC<SelectionPopupProps> = ({
     if (!isClosedUntilRefresh) {
       const timer = setTimeout(() => {
         setIsVisible(true)
-      }, 300) // Reduced delay
+      }, 300)
       
       return () => clearTimeout(timer)
     }
@@ -117,7 +117,7 @@ const SelectionPopup: React.FC<SelectionPopupProps> = ({
     <>
       <div
         ref={popupRef}
-        className={`fixed rounded-lg shadow-lg border backdrop-blur-sm p-2 z-[2147483647] transition-all duration-200 ${baseTheme.bg} ${baseTheme.text} ${baseTheme.border}`}
+        className={`fixed rounded-md shadow-lg border backdrop-blur-sm p-2.5 z-[2147483647] transition-all duration-200 ${baseTheme.bg} ${baseTheme.text} ${baseTheme.border}`}
         style={{
           top: `${position.y}px`,
           left: `${position.x}px`,
@@ -130,13 +130,13 @@ const SelectionPopup: React.FC<SelectionPopupProps> = ({
           <div className="flex flex-row items-center gap-1.5 text-xs">
             <button
               onClick={handleClose}
-              className={`px-2 py-1 rounded-md ${baseTheme.buttonBg} ${baseTheme.buttonText} ${baseTheme.buttonHover} transition-colors duration-150`}
+              className={`px-2 py-1 rounded ${baseTheme.buttonBg} ${baseTheme.buttonText} ${baseTheme.buttonHover} transition-colors duration-150`}
             >
               Close
             </button>
             <button
               onClick={handleCloseUntilRefresh}
-              className="px-2 py-1 rounded-md bg-red-500/90 text-white hover:bg-red-600/90 transition-colors duration-150"
+              className="px-2 py-1 rounded bg-red-500/90 text-white hover:bg-red-600/90 transition-colors duration-150"
             >
               Until Refresh
             </button>
@@ -145,13 +145,13 @@ const SelectionPopup: React.FC<SelectionPopupProps> = ({
           <>
             <button
               onClick={handleCloseClick}
-              className={`absolute top-1 right-1 w-4 h-4 flex items-center justify-center rounded-full ${baseTheme.buttonBg} ${baseTheme.buttonText} ${baseTheme.buttonHover} transition-colors duration-150`}
+              className={`absolute -top-2 -right-2 w-5 h-5 flex items-center justify-center rounded-full ${baseTheme.buttonBg} ${baseTheme.buttonText} ${baseTheme.buttonHover} transition-all duration-150 shadow-md hover:scale-110 border ${baseTheme.border}`}
               aria-label="Close"
             >
-              <X className="w-2 h-2" />
+              <X className="w-3 h-3" />
             </button>
 
-            <div className="flex flex-wrap gap-1.5 mt-0.5">
+            <div className="flex flex-wrap gap-1.5">
               {[
                 { action: 'summarize', icon: <SummarizesSVG className="w-3 h-3" />, label: 'Summarize' },
                 { action: 'define', icon: <BookA className="w-3 h-3" />, label: 'Define' },
@@ -161,7 +161,7 @@ const SelectionPopup: React.FC<SelectionPopupProps> = ({
                 <button
                   key={action}
                   onClick={() => handleActionClick(action as any)}
-                  className={`flex items-center gap-1.5 px-2 py-1 text-xs rounded-md ${baseTheme.buttonBg} ${baseTheme.buttonText} ${baseTheme.buttonHover} transition-all duration-150 hover:scale-105`}
+                  className={`flex items-center gap-1.5 px-2 py-1 text-xs rounded ${baseTheme.buttonBg} ${baseTheme.buttonText} ${baseTheme.buttonHover} transition-all duration-150 hover:scale-105 hover:shadow-sm`}
                 >
                   {icon}
                   {label}
@@ -182,4 +182,4 @@ const SelectionPopup: React.FC<SelectionPopupProps> = ({
   )
 }
 
-export default SelectionPopup  
+export default SelectionPopup
