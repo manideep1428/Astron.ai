@@ -1,186 +1,246 @@
-import { useState, useEffect } from 'react';
-import { MessageSquare, RefreshCcw, FileText, Send, X, ChevronDown } from 'lucide-react';
-import { supportedLanguages, translateText } from '../api/translate';
-import Skeleton from './Skeleton';
-import { promptWithAI } from '../api/prompt';
-import { rewriteText } from '../api/rewrite';
+import { useState, useEffect } from "react";
+import { FileText, RefreshCcw, Send, Trash2, Folder, X } from "lucide-react";
+import { summarizeFullText } from "../api/summarize";
+import { rewriteText } from "../api/rewrite";
+import { promptWithAIStreaming } from "../api/prompt";
 
 interface Message {
   text: string;
   isUser: boolean;
 }
 
+type SavedSummariesType = { [key: string]: string };
+
 export default function Popup() {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [inputText, setInputText] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [showLanguageSelect, setShowLanguageSelect] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState('');
-  const [pageContent, setPageContent] = useState('');
+  const [inputText, setInputText] = useState("");
+  const [savedSummaries, setSavedSummaries] = useState<SavedSummariesType>({});
+  const [viewSaved, setViewSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setPageContent("This is the content of the current tab. It would be much longer in a real scenario.");
+    chrome.storage.local.get(["messages", "summaries"], (result) => {
+      setMessages(result.messages || []);
+      setSavedSummaries(result.summaries || {});
+    });
   }, []);
 
-  const handleSend = async () => {
-    if (inputText.trim()) {
-      addMessage(inputText, true);
-      setInputText('');
-      await handleUserInput(inputText);
-    }
-  };
+  useEffect(() => {
+    chrome.storage.local.set({ messages, summaries: savedSummaries });
+  }, [messages, savedSummaries]);
 
   const addMessage = (text: string, isUser: boolean) => {
     setMessages((prev) => [...prev, { text, isUser }]);
   };
 
-  const handleUserInput = async (input: string) => {
-    setIsLoading(true);
+  const summarizeCurrentPage = async () => {
     try {
-      const lowerInput = input.toLowerCase();
-      if (lowerInput.startsWith('rewrite:')) {
+      const activeTabId = await getActiveTabId();
+      chrome.scripting.executeScript(
+        {
+          target: { tabId: activeTabId },
+          func: getPageContent,
+        },
+        async (results) => {
+          const pageContent = results[0]?.result;
+          if (!pageContent) {
+            addMessage("Error: Could not extract page content.", false);
+            return;
+          }
+
+          addMessage("Summarizing current page...", false);
+
+          const summary = await summarizeFullText(pageContent);
+          const summaryId = `summary-${Date.now()}`;
+          setSavedSummaries((prev) => ({ ...prev, [summaryId]: summary }));
+
+          addMessage(`Summary: ${summary}`, false);
+        }
+      );
+    } catch (err) {
+      console.error(err);
+      addMessage(`Error: ${err instanceof Error ? err.message : "Failed to summarize page."}`, false);
+    }
+  };
+
+  const handleUserInput = async (input: string) => {
+    if (!input.trim()) return;
+
+    addMessage(input, true);
+
+    try {
+      if (input.startsWith("rewrite:")) {
         const textToRewrite = input.slice(8).trim();
         const rewrittenText = await rewriteText(textToRewrite);
         addMessage(`Rewritten: ${rewrittenText}`, false);
-      } else if (lowerInput.startsWith('summarize:')) {
+      } else if (input.startsWith("summarize:")) {
         const textToSummarize = input.slice(10).trim();
-        const summarizedText = await promptWithAI(`summarize: ${textToSummarize}`);
-        addMessage(`Summary: ${summarizedText}`, false);
+        const summary = await summarizeFullText(textToSummarize);
+        addMessage(`Summary: ${summary}`, false);
       } else {
-        const response = await promptWithAI(input);
-        addMessage(response, false);
+        let streamedSummary = "";
+        await promptWithAIStreaming(input, (chunk) => {
+          streamedSummary += chunk;
+          setMessages((prev) =>
+            prev.map((msg, index) =>
+              index === prev.length - 1 ? { ...msg, text: streamedSummary } : msg
+            )
+          );
+        });
+        addMessage(streamedSummary, false);
       }
-    } catch (error: any) {
-      addMessage(`Error: ${error.message}`, false);
+    } catch (err) {
+      console.error(err);
+      addMessage(`Error: ${err instanceof Error ? err.message : "Something went wrong."}`, false);
+    } finally {
+      setInputText("");
     }
-    setIsLoading(false);
   };
 
-  const handleTranslate = async () => {
-    if (selectedLanguage) {
-      setIsLoading(true);
-      try {
-        const translatedContent = await translateText(pageContent, selectedLanguage);
-        addMessage(`Translated content: ${translatedContent.substring(0, 100)}...`, false);
-      } catch (error: any) {
-        addMessage(`Translation error: ${error.message}`, false);
-      }
-      setIsLoading(false);
-      setShowLanguageSelect(false);
-      setSelectedLanguage('');
+  const deleteAllSummaries = () => {
+    setSavedSummaries({});
+    chrome.storage.local.remove("summaries");
+    setError("No saved summaries.");
+  };
+
+  const deleteSummary = (key: string) => {
+    const updatedSummaries = { ...savedSummaries };
+    delete updatedSummaries[key];
+    setSavedSummaries(updatedSummaries);
+    if (Object.keys(updatedSummaries).length === 0) {
+      setError("No saved summaries.");
     }
   };
+
+  const toggleSavedSummariesView = () => {
+    setViewSaved(!viewSaved);
+    setError(null);
+  };
+
+  const getActiveTabId = async (): Promise<number> => {
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tabs.length || !tabs[0].id) throw new Error("No active tab found.");
+    return tabs[0].id;
+  };
+
+  const getPageContent = () => document.body.innerText || "";
 
   return (
-    <div className="flex flex-col h-[600px] w-[400px] bg-gradient-to-br from-gray-900 to-gray-800 text-white font-sans">
-      {/* Header */}
-      <div className="p-4 border-b border-gray-700 bg-gray-800 rounded-t-lg">
-        <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
-          Astron
-        </h1>
+    <div className="flex flex-col h-[600px] w-[400px] bg-gray-100 text-gray-800 font-sans">
+      <header className="p-4 bg-blue-600 text-white flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Summarizer</h1>
+        <button
+          onClick={() => {
+            setMessages([]);
+            setSavedSummaries({});
+            chrome.storage.local.remove(["messages", "summaries"]);
+          }}
+          className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+        >
+          Reset
+        </button>
+      </header>
+
+      <div className="grid grid-cols-3 gap-2 p-4 bg-white shadow">
+        <button
+          onClick={summarizeCurrentPage}
+          className="flex flex-col items-center justify-center p-2 bg-blue-100 rounded hover:bg-blue-200 transition-colors"
+        >
+          <FileText size={24} className="mb-1 text-blue-600" />
+          <span className="text-sm">Summarize Page</span>
+        </button>
+        <button
+          onClick={() => setInputText("rewrite: ")}
+          className="flex flex-col items-center justify-center p-2 bg-purple-100 rounded hover:bg-purple-200 transition-colors"
+        >
+          <RefreshCcw size={24} className="mb-1 text-purple-600" />
+          <span className="text-sm">Rewrite</span>
+        </button>
+        <button
+          onClick={toggleSavedSummariesView}
+          className="flex flex-col items-center justify-center p-2 bg-green-100 rounded hover:bg-green-200 transition-colors"
+        >
+          <Folder size={24} className="mb-1 text-green-600" />
+          <span className="text-sm">View Saved</span>
+        </button>
       </div>
 
-      {/* Actions */}
-      <div className="grid grid-cols-3 gap-3 p-3 border-b border-gray-700 bg-gray-800/50">
-        {['summarize', 'translate', 'rewrite'].map((action) => (
-          <button
-            key={action}
-            onClick={() => {
-              if (action === 'translate') setShowLanguageSelect(true);
-              else setInputText(`${action}: `);
-            }}
-            className="flex flex-col items-center justify-center p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            {action === 'summarize' && <FileText size={20} className="mb-1 text-blue-400" />}
-            {action === 'translate' && <MessageSquare size={20} className="mb-1 text-green-400" />}
-            {action === 'rewrite' && <RefreshCcw size={20} className="mb-1 text-purple-400" />}
-            <span className="text-xs font-medium capitalize">{action} Page</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Language Selector */}
-      {showLanguageSelect && (
-        <div className="absolute inset-0 bg-gray-900/80 flex items-center justify-center backdrop-blur-sm transition-all duration-300">
-          <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-80">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold text-blue-400">Select Target Language</h2>
+      <div className="flex-1 overflow-auto p-4 bg-white">
+        {viewSaved ? (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">Saved Summaries</h2>
               <button
-                onClick={() => setShowLanguageSelect(false)}
-                className="text-gray-400 hover:text-white transition-colors duration-200"
+                onClick={toggleSavedSummariesView}
+                className="text-gray-600 hover:text-gray-800"
               >
                 <X size={20} />
               </button>
             </div>
-            <div className="relative">
-              <select
-                value={selectedLanguage}
-                onChange={(e) => setSelectedLanguage(e.target.value)}
-                className="w-full p-3 mb-4 bg-gray-700 text-white rounded-lg appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
-              >
-                <option value="">Select a language</option>
-                {supportedLanguages.map((lang) => (
-                  <option key={lang.code} value={lang.code}>
-                    {lang.name}
-                  </option>
+            {error ? (
+              <p className="text-red-500">{error}</p>
+            ) : (
+              <div className="space-y-2">
+                {Object.entries(savedSummaries).map(([key, summary]) => (
+                  <div
+                    key={key}
+                    className="flex justify-between items-center p-2 bg-gray-100 rounded"
+                  >
+                    <p className="text-sm flex-1 mr-2">{summary}</p>
+                    <button
+                      onClick={() => deleteSummary(key)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
                 ))}
-              </select>
-              <ChevronDown size={20} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
-            </div>
-            <button
-              onClick={handleTranslate}
-              className="w-full p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              Translate
-            </button>
+              </div>
+            )}
+            {Object.keys(savedSummaries).length > 0 && (
+              <button
+                onClick={deleteAllSummaries}
+                className="mt-4 w-full bg-red-500 text-white py-2 rounded hover:bg-red-600 transition-colors"
+              >
+                Delete All
+              </button>
+            )}
           </div>
-        </div>
-      )}
-
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message, index) => (
-          <div
-            key={index}
-            className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
-          >
-            <div
-              className={`max-w-[80%] p-3 rounded-lg ${
-                message.isUser ? 'bg-blue-600' : 'bg-gray-700'
-              } text-white shadow-md transition-all duration-300 hover:shadow-lg`}
-            >
-              {message.text}
-            </div>
-          </div>
-        ))}
-        {isLoading && (
-          <div className="flex justify-start">
-            <div className="max-w-[80%] p-3 rounded-lg bg-gray-700 text-white shadow-md">
-              <Skeleton />
-            </div>
+        ) : (
+          <div className="space-y-2">
+            {messages.map((message, index) => (
+              <div
+                key={index}
+                className={`p-2 rounded ${
+                  message.isUser
+                    ? "bg-blue-100 text-blue-800"
+                    : "bg-gray-100 text-gray-800"
+                }`}
+              >
+                {message.text}
+              </div>
+            ))}
           </div>
         )}
       </div>
 
-      {/* Input */}
-      <div className="p-4 border-t border-gray-700 bg-gray-800 rounded-b-lg">
-        <div className="flex gap-2">
+      <footer className="p-4 bg-white border-t">
+        <div className="flex space-x-2">
           <input
-            type="text"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
-            placeholder="Type your message..."
-            className="flex-1 p-3 rounded-lg bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 transition-all duration-200"
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+            placeholder="Type your command..."
+            className="flex-1 px-3 py-2 border text-black bg-white rounded focus:ring-2 focus:ring-blue-500"
+            onKeyDown={(e) => e.key === "Enter" && handleUserInput(inputText)}
           />
           <button
-            onClick={handleSend}
-            className="p-3 bg-blue-600 rounded-lg hover:bg-blue-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transform hover:scale-105"
+            onClick={() => handleUserInput(inputText)}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
           >
             <Send size={20} />
           </button>
         </div>
-      </div>
+      </footer>
     </div>
   );
 }
