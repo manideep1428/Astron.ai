@@ -1,50 +1,61 @@
-# React + TypeScript + Vite
+# Vite Chrome Browser Extension
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This repository provides a scaffold for building a Chrome browser extension using [Vite](https://vitejs.dev/), a fast build tool for modern web projects. 
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- *Vite-powered development*: Leverage fast builds and HMR for a better development experience.
+- *Manifest V3 support*: Build extensions with the latest Chrome extension manifest format.
+- *Modular architecture*: Easily customize and extend functionalities.
 
-## Expanding the ESLint configuration
+## Prerequisites
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+Ensure you have the following installed:
 
-- Configure the top-level `parserOptions` property like this:
+- Node.js (version 14 or higher)
+- npm or yarn package manager
+- A Chromium-based browser (e.g., Chrome, Edge)
 
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+## Getting Started
+
+### 1. Clone the Repository
+```bash
+git clone https://github.com/your-repo/vite-chrome-extension.git
+cd vite-chrome-extension
 ```
 
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
-
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
-
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
+2.Install Dependencies
+```bash
+npm install
 ```
+
+4. Load the Extension in Chrome
+
+1. Go to ``` chrome://extensions/ ```
+
+
+2. Enable "Developer mode" in the top right corner.
+
+
+3. Click "Load unpacked" and select the dist folder from the project directory.
+
+
+
+5. Build for Production
+
+When you're ready to publish your extension, build the project using:
+
+npm run build
+
+The production-ready files will be available in the dist folder.
+
+Resources
+
+Vite Documentation
+
+Chrome Extensions Documentation
+
+
+Contributing :
+
+Contributions are welcome! Please fork this repository and submit a pull request with your improvements.
