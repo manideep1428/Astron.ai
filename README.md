@@ -28,8 +28,15 @@ cd vite-chrome-extension
 ```bash
 npm install
 ```
+3. Build the project
+   ```bash
+   npm run build
+   ```
+4 . Now , You have ```dist``` named folder  
 
-4. Load the Extension in Chrome
+5. Load the Extension in Chrome
+  
+##Load the extension to test
 
 1. Go to ``` chrome://extensions/ ```
 
@@ -37,23 +44,8 @@ npm install
 2. Enable "Developer mode" in the top right corner.
 
 
-3. Click "Load unpacked" and select the dist folder from the project directory.
+3. Click "Load unpacked" and select the ```dist``` folder from the project directory.
 
-
-
-5. Build for Production
-
-When you're ready to publish your extension, build the project using:
-
-npm run build
-
-The production-ready files will be available in the dist folder.
-
-Resources
-
-Vite Documentation
-
-Chrome Extensions Documentation
 
 
 Contributing :
