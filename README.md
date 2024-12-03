@@ -28,10 +28,11 @@ cd vite-chrome-extension
 ```bash
 npm install
 ```
+
 3. Build the project
-   ```bash
-   npm run build
-   ```
+```bash
+npm run build
+```
 4 . Now , You have ```dist``` named folder  
 
 5. Load the Extension in Chrome
