@@ -13,6 +13,7 @@ export const supportedLanguages = [
 
 export async function detectLanguage(text: string): Promise<string> {
   try {
+    console.log( "This is Translate" +    text)
     //@ts-ignore
     const detector = await translation.createDetector();
     const results = await detector.detect(text);

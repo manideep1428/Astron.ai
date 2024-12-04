@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, GripHorizontal } from 'lucide-react';
+import { X, GripHorizontal, HelpCircle } from 'lucide-react';
 import { motion, useDragControls } from "framer-motion";
 import { summarizeText } from "../api/summarize";
 import { defineText } from "../api/prompt";
@@ -13,12 +13,30 @@ interface ActionPopupProps {
   onClose: () => void;
 }
 
+const SkeletonLoader = ({ theme }: { theme: any }) => (
+  <div className="space-y-4 p-2">
+    {[...Array(3)].map((_, index) => (
+      <div 
+        key={index} 
+        className={`animate-pulse flex space-x-4 items-center ${theme.secondaryBg} rounded-lg p-3`}
+      >
+        <div className={`h-4 w-4 rounded-full ${theme.tertiaryText} opacity-20`}></div>
+        <div className="flex-1 space-y-3">
+          <div className={`h-3 ${theme.tertiaryText} rounded opacity-20`}></div>
+          <div className={`h-3 w-5/6 ${theme.tertiaryText} rounded opacity-10`}></div>
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
 const ActionPopup: React.FC<ActionPopupProps> = ({ action, selectedText, onClose }) => {
   const [result, setResult] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [targetLanguage, setTargetLanguage] = useState<string>("");
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const dragControls = useDragControls();
 
   useEffect(() => {
@@ -104,20 +122,25 @@ const ActionPopup: React.FC<ActionPopupProps> = ({ action, selectedText, onClose
 
   return (
     <motion.div
-      drag
+      drag={isDragging}
       dragMomentum={false}
       dragElastic={0.2}
       dragControls={dragControls}
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
-      className={`fixed top-4 left-1/2 transform -translate-x-1/2 z-[2147483648] w-96 ${baseTheme.bg} rounded-xl shadow-xl border ${baseTheme.border} backdrop-blur-sm transition-colors duration-300`}
+      className={`fixed top-4 left-1/2 transform -translate-x-1/2 z-[2147483648] w-96 min-h-[320px] ${baseTheme.bg} rounded-xl shadow-xl border ${baseTheme.border} backdrop-blur-sm transition-colors duration-300`}
     >
       <div className={`flex justify-between items-center p-3 border-b ${baseTheme.border} ${baseTheme.secondaryBg}`}>
         <div className="flex items-center gap-2">
           <motion.div
             className={`cursor-grab active:cursor-grabbing ${baseTheme.hoverBg} p-1 rounded-lg transition-colors duration-200`}
-            onPointerDown={(e) => dragControls.start(e)}
+            onPointerDown={(e) => {
+              setIsDragging(true);
+              dragControls.start(e);
+            }}
+            onPointerUp={() => setIsDragging(false)}
+            onPointerLeave={() => setIsDragging(false)}
           >
             <GripHorizontal className={`w-5 h-5 ${baseTheme.tertiaryText}`} />
           </motion.div>
@@ -134,7 +157,7 @@ const ActionPopup: React.FC<ActionPopupProps> = ({ action, selectedText, onClose
         </button>
       </div>
 
-      <div className={`p-4 ${baseTheme.bg}`}>
+      <div className={`p-4 ${baseTheme.bg} relative`}>
         {action === "translate" && !targetLanguage ? (
           <div className="space-y-3">
             <label htmlFor="targetLang" className={`block text-sm font-medium ${baseTheme.secondaryText}`}>
@@ -159,13 +182,12 @@ const ActionPopup: React.FC<ActionPopupProps> = ({ action, selectedText, onClose
             </div>
           </div>
         ) : loading ? (
-          <div className="space-y-3 animate-pulse">
-            <div className={`h-4 ${baseTheme.secondaryBg} rounded-md`}></div>
-            <div className={`h-4 ${baseTheme.secondaryBg} rounded-md w-5/6`}></div>
-            <div className={`h-4 ${baseTheme.secondaryBg} rounded-md w-4/6`}></div>
-          </div>
+          <SkeletonLoader theme={baseTheme} />
         ) : error ? (
-          <div className="text-sm text-red-500 dark:text-red-400">{error}</div>
+          <div className="flex items-center space-x-2 text-sm text-red-500 dark:text-red-400 p-3">
+            <HelpCircle className="w-5 h-5 opacity-70" />
+            <span>{error}</span>
+          </div>
         ) : result ? (
           <div className="space-y-3">
             <div className={`text-xs font-medium ${baseTheme.tertiaryText} pt-2`}>

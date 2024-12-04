@@ -1,5 +1,6 @@
 export async function defineText(text: string): Promise<string> {
   try {
+    console.log( "This is Define" +    text)
       //@ts-ignore
     const capabilities = await ai.languageModel.capabilities();
     if (capabilities.available !== "readily") {
@@ -9,9 +10,9 @@ export async function defineText(text: string): Promise<string> {
     const session = await ai.languageModel.create();
     const prompt = `Define the meaning of this word or phrase and add an example that even a 10-year-old can understand. 
       The output should look like this: 
-      Definition: ---------------
-      Example to understand: "" 
-      Word or phrase: "${text}"`;
+      """ Definition: ---------------
+      Example to understand: """ 
+      For this word :  ${text}`;
 
     const result = await session.prompt(prompt);
     session.destroy();
