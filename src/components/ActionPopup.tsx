@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { X, GripHorizontal, HelpCircle } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from "react";
+import { X, GripHorizontal, HelpCircle, Copy, CheckCircle2 } from 'lucide-react';
 import { motion, useDragControls } from "framer-motion";
 import { summarizeText } from "../api/summarize";
 import { defineText } from "../api/prompt";
@@ -37,6 +37,7 @@ const ActionPopup: React.FC<ActionPopupProps> = ({ action, selectedText, onClose
   const [targetLanguage, setTargetLanguage] = useState<string>("");
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [copied, setCopied] = useState(false); 
   const dragControls = useDragControls();
 
   useEffect(() => {
@@ -99,7 +100,18 @@ const ActionPopup: React.FC<ActionPopupProps> = ({ action, selectedText, onClose
     setTargetLanguage(e.target.value);
   };
 
-  // Invert colors based on page theme
+  const handleCopy = useCallback(async () => {
+    if (result) {
+      try {
+        await navigator.clipboard.writeText(result);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch (err) {
+        console.error('Failed to copy text:', err);
+      }
+    }
+  }, [result]);
+
   const baseTheme = isDarkMode ? {
     bg: 'bg-white',
     secondaryBg: 'bg-gray-50',
@@ -148,13 +160,27 @@ const ActionPopup: React.FC<ActionPopupProps> = ({ action, selectedText, onClose
             {action}
           </h2>
         </div>
-        <button
-          onClick={onClose}
-          className={`p-1.5 rounded-lg ${baseTheme.hoverBg} transition-colors duration-200`}
-          aria-label="Close"
-        >
-          <X className={`w-5 h-5 ${baseTheme.secondaryText}`} />
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleCopy}
+            className={`p-1.5 rounded-lg ${baseTheme.hoverBg} transition-colors duration-200`}
+            title="Copy to clipboard"
+            disabled={!result}
+          >
+            {copied ? (
+              <CheckCircle2 className={`w-5 h-5 ${baseTheme.secondaryText}`} />
+            ) : (
+              <Copy className={`w-5 h-5 ${baseTheme.secondaryText}`} />
+            )}
+          </button>
+          <button
+            onClick={onClose}
+            className={`p-1.5 rounded-lg ${baseTheme.hoverBg} transition-colors duration-200`}
+            aria-label="Close"
+          >
+            <X className={`w-5 h-5 ${baseTheme.secondaryText}`} />
+          </button>
+        </div>
       </div>
 
       <div className={`p-4 ${baseTheme.bg} relative`}>
